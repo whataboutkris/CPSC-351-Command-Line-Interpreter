@@ -29,6 +29,19 @@ DWORD WINAPI execute_help(LPVOID lpParam) {
     return 0;
 }
 
+DWORD WINAPI execute_vol(LPVOID lpParam) {
+    system("vol"); 
+}
+
+DWORD WINAPI execute_path(LPVOID lpParam) {  // how do we use this one 
+    char* systemPath = getenv("PATH");
+    if (systemPath != NULL) {
+        std::cout << "system Path:\n"<< systemPath << std::endl;
+    } else {
+        std::cout << "Unable to retrieve System Path\n";
+    }
+}
+
 void create_and_wait_thread(LPTHREAD_START_ROUTINE commandFunc) {
     // Create a child thread to execute the command
     HANDLE hThread = CreateThread(
@@ -64,6 +77,10 @@ int main() {
             create_and_wait_thread(execute_dir);
         } else if (input == "help") {
             create_and_wait_thread(execute_help);
+        } else if (input == "vol") {
+            create_and_wait_thread(execute_vol);
+        } else if (input == "path") {
+            create_and_wait_thread(execute_path);
         } else if (input == "exit" || input == "quit") {
             std::cout << "Exiting myShell...\n";
             break;
