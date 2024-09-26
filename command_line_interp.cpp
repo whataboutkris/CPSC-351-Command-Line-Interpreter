@@ -1,6 +1,14 @@
 #include <iostream>
 #include <string>
+#include <cstdlib>
+#include <sstream>
 #include <windows.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 DWORD WINAPI execute_tasklist(LPVOID lpParam){
     system("tasklist");
@@ -49,17 +57,42 @@ DWORD WINAPI execute_dir(LPVOID lpParam) {
     return 0;
 }
 
+void setColor(std::string color) {
+#ifdef _WIN32
+    if (color == "red")
+        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+    else if (color == "green")
+        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 10);
+    else if (color == "blue")
+        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 9);
+    else if (color == "default")
+        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+#else
+    if (color == "red")
+        std::cout << "\033[31m";
+    else if (color == "green")
+        std::cout << "\033[32m";
+    else if (color == "blue")
+        std::cout << "\033[34m";
+    else if (color == "default")
+        std::cout << "\033[0m";
+#endif
+}
+
 // Function to handle the 'help' command
 DWORD WINAPI execute_help(LPVOID lpParam) {
     std::cout << "Supported commands:\n";
     std::cout << "dir  - List the contents of the current directory.\n";
     std::cout << "help - Display this help message.\n";
+    //std::cout << "echo - sdfgsdfgsdfg\n";
+    //std::cout << "color - sdfgsdfgsdfg\n";
     std::cout << "exit - Exit the shell.\n";
     return 0;
 }
 
 DWORD WINAPI execute_vol(LPVOID lpParam) {
     system("vol"); 
+    return 0;
 }
 
 DWORD WINAPI execute_path(LPVOID lpParam) {  // how do we use this one 
@@ -69,6 +102,7 @@ DWORD WINAPI execute_path(LPVOID lpParam) {  // how do we use this one
     } else {
         std::cout << "Unable to retrieve System Path\n";
     }
+    return 0;
 }
 
 void create_and_wait_thread(LPTHREAD_START_ROUTINE commandFunc, const char* param = nullptr) {
@@ -101,8 +135,27 @@ int main() {
         std::cout << "myShell> ";
         std::getline(std::cin, input);
 
-        // Compare the input to supported commands
-        if (input == "dir") {
+        std::istringstream iss(input);
+        std::string command;
+        iss >> command;
+
+        if (command == "echo") {
+            std::string message;
+            getline(iss, message);
+            if (!message.empty() && message[0] == ' ') {
+                message = message.substr(1);
+            }
+            std::cout << message << std::endl;
+        }
+        else if (input.find("color(") == 0 && input[input.size() - 1] == ')') {
+            std::string color = input.substr(6, input.size() - 7);
+            if (color == "red" || color == "green" || color == "blue" || color == "default") {
+                setColor(color);
+            } else {
+                std::cout << "Unsupported color! Use 'red', 'green', 'blue', or 'default'.\n";
+            }
+        }
+        else if (input == "dir") {
             create_and_wait_thread(execute_dir);
         } else if (input == "help") {
             create_and_wait_thread(execute_help);
