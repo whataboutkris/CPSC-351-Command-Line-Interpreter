@@ -4,6 +4,17 @@
 
 // Function to handle the 'dir' command (list directory contents)
 DWORD WINAPI execute_dir(LPVOID lpParam) {
+    // Get and print the current directory path
+    char buffer[MAX_PATH];
+    DWORD length = GetCurrentDirectoryA(MAX_PATH, buffer);
+
+    if (length == 0) {
+        std::cout << "Error: Could not get the current directory path.\n";
+    } else {
+        std::cout << "Current directory: " << buffer << std::endl;
+    }
+
+    // List the contents of the current directory
     WIN32_FIND_DATAA findFileData; // Use the ANSI version
     HANDLE hFind = FindFirstFileA("*.*", &findFileData); // Use FindFirstFileA
 
