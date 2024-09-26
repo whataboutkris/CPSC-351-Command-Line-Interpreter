@@ -2,6 +2,24 @@
 #include <string>
 #include <windows.h>
 
+DWORD WINAPI execute_tasklist(LPVOID lpParam){
+    system("tasklist");
+    return 0;
+}
+
+DWORD WINAPI execute_notepad(LPVOID lpParam){
+    char* fileName = (char*)lpParam;
+    if(fileName != nullptr && strlen(fileName) > 0){
+        std::string command = "notepad ";
+        command += fileName;
+        system(command.c_str());
+    }
+    else{
+        system("notepad");
+    }
+    return 0;
+}
+
 // Function to handle the 'dir' command (list directory contents)
 DWORD WINAPI execute_dir(LPVOID lpParam) {
     // Get and print the current directory path
@@ -53,13 +71,13 @@ DWORD WINAPI execute_path(LPVOID lpParam) {  // how do we use this one
     }
 }
 
-void create_and_wait_thread(LPTHREAD_START_ROUTINE commandFunc) {
+void create_and_wait_thread(LPTHREAD_START_ROUTINE commandFunc, const char* param = nullptr) {
     // Create a child thread to execute the command
     HANDLE hThread = CreateThread(
         NULL,           // default security attributes
         0,              // default stack size
         commandFunc,    // start address of the thread function
-        NULL,           // parameter to pass to the thread
+        (LPVOID)param,           // parameter to pass to the thread
         0,              // default creation flags
         NULL);          // thread ID not required
 
@@ -92,7 +110,12 @@ int main() {
             create_and_wait_thread(execute_vol);
         } else if (input == "path") {
             create_and_wait_thread(execute_path);
-        } else if (input == "exit" || input == "quit") {
+        } else if (input == "tasklist"){
+            create_and_wait_thread(execute_tasklist);
+        }else if(input.rfind("notepad", 0) == 0){
+            std::string fileName = input.length() > 7 ? input.substr(8) : "";
+            create_and_wait_thread(execute_notepad, fileName.c_str());
+        }else if (input == "exit" || input == "quit") {
             std::cout << "Exiting myShell...\n";
             break;
         } else {
