@@ -10,24 +10,6 @@
 #include <unistd.h>
 #endif
 
-DWORD WINAPI execute_tasklist(LPVOID lpParam){
-    system("tasklist");
-    return 0;
-}
-
-DWORD WINAPI execute_notepad(LPVOID lpParam){
-    char* fileName = (char*)lpParam;
-    if(fileName != nullptr && strlen(fileName) > 0){
-        std::string command = "notepad ";
-        command += fileName;
-        system(command.c_str());
-    }
-    else{
-        system("notepad");
-    }
-    return 0;
-}
-
 // Function to handle the 'dir' command (list directory contents)
 DWORD WINAPI execute_dir(LPVOID lpParam) {
     // Get and print the current directory path
@@ -57,36 +39,19 @@ DWORD WINAPI execute_dir(LPVOID lpParam) {
     return 0;
 }
 
-void setColor(std::string color) {
-#ifdef _WIN32
-    if (color == "red")
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
-    else if (color == "green")
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 10);
-    else if (color == "blue")
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 9);
-    else if (color == "default")
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-#else
-    if (color == "red")
-        std::cout << "\033[31m";
-    else if (color == "green")
-        std::cout << "\033[32m";
-    else if (color == "blue")
-        std::cout << "\033[34m";
-    else if (color == "default")
-        std::cout << "\033[0m";
-#endif
-}
-
 // Function to handle the 'help' command
 DWORD WINAPI execute_help(LPVOID lpParam) {
     std::cout << "Supported commands:\n";
-    std::cout << "dir  - List the contents of the current directory.\n";
-    std::cout << "help - Display this help message.\n";
-    //std::cout << "echo - sdfgsdfgsdfg\n";
-    //std::cout << "color - sdfgsdfgsdfg\n";
-    std::cout << "exit - Exit the shell.\n";
+    std::cout << "dir       - List the contents of the current directory.\n";
+    std::cout << "help      - Display this help message.\n";
+    std::cout << "vol       - Display the volume label and serial number.\n";
+    std::cout << "path      - Display the system PATH environment variable.\n";
+    std::cout << "tasklist  - Display a list of currently running tasks.\n";
+    std::cout << "notepad   - Open Notepad with an optional file name.\n";
+    std::cout << "echo      - Display a message on the console.\n";
+    std::cout << "color     - Change the console background and foreground colors.\n";
+    std::cout << "ping      - Send ICMP Echo Request packets to a network host.\n";
+    std::cout << "exit/quit - Exit the shell.\n";
     return 0;
 }
 
@@ -105,13 +70,115 @@ DWORD WINAPI execute_path(LPVOID lpParam) {  // how do we use this one
     return 0;
 }
 
-void create_and_wait_thread(LPTHREAD_START_ROUTINE commandFunc, const char* param = nullptr) {
+DWORD WINAPI execute_tasklist(LPVOID lpParam){
+    system("tasklist");
+    return 0;
+}
+
+DWORD WINAPI execute_notepad(LPVOID lpParam){
+    char* fileName = (char*)lpParam;
+    if(fileName != nullptr && strlen(fileName) > 0){
+        std::string command = "notepad ";
+        command += fileName;
+        system(command.c_str());
+    }
+    else{
+        system("notepad");
+    }
+    return 0;
+}
+
+DWORD WINAPI execute_echo(LPVOID lpParam) {
+    char* message = static_cast<char*>(lpParam);  // Cast LPVOID to char*
+    if (message != nullptr) {
+        std::cout << message << std::endl;  // Print the message
+    } else {
+        std::cout << "Error: No message to echo.\n";
+    }
+    return 0;
+}
+
+// Updated setColor function to handle two hex digits for background and foreground
+
+void printColorHelp() {
+    std::cout << "COLOR [attr]\n\n";
+    std::cout << "  attr        Specifies color attribute of console output\n\n";
+    std::cout << "Color attributes are specified by TWO hex digits -- the first\n";
+    std::cout << "corresponds to the background; the second the foreground. Each digit\n";
+    std::cout << "can be any of the following values:\n\n";
+    std::cout << "    0 = Black       8 = Gray\n";
+    std::cout << "    1 = Blue        9 = Light Blue\n";
+    std::cout << "    2 = Green       A = Light Green\n";
+    std::cout << "    3 = Aqua        B = Light Aqua\n";
+    std::cout << "    4 = Red         C = Light Red\n";
+    std::cout << "    5 = Purple      D = Light Purple\n";
+    std::cout << "    6 = Yellow      E = Light Yellow\n";
+    std::cout << "    7 = White       F = Bright White\n\n";
+    std::cout << "If no argument is given, this command restores the color to what it was\n";
+    std::cout << "when CMD.EXE started. This value either comes from the current console\n";
+    std::cout << "window, the /T command line switch, or from the DefaultColor registry value.\n";
+}
+DWORD WINAPI setColor(LPVOID lpParam) {
+    std::string attr = *static_cast<std::string*>(lpParam);  // Cast LPVOID to string*
+
+    // Get the current console text attributes
+    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &consoleInfo);
+    int currentAttr = consoleInfo.wAttributes;
+    
+    int currentBg = (currentAttr >> 4) & 0x0F;  // Extract current background color
+    int currentFg = currentAttr & 0x0F;         // Extract current foreground color
+
+    if (attr.empty()) {
+        printColorHelp();
+        return 0;
+    }
+
+    // Check if one or two hex digits are provided
+    if (attr.size() == 1) {
+        // Only background provided, keep the current foreground
+        int bgValue = strtol(attr.c_str(), NULL, 16);
+        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (bgValue << 4) | currentFg);
+    } 
+    else if (attr.size() == 2) {
+        // Both background and foreground provided
+        char background = attr[0];
+        char foreground = attr[1];
+
+        if (background == foreground) {
+            std::cout << "Error: Foreground and background colors cannot be the same.\n";
+            return 1;
+        }
+
+        int bgValue = strtol(&background, NULL, 16);
+        int fgValue = strtol(&foreground, NULL, 16);
+        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (bgValue << 4) | fgValue);
+    } else {
+        std::cout << "Invalid attribute format! Use one or two hex digits like '1' or 'fc'.\n";
+    }
+    
+    return 0;
+}
+
+DWORD WINAPI execute_ping(LPVOID lpParam) {
+    char* target = static_cast<char*>(lpParam);  // Cast LPVOID to char*
+    if (target != nullptr) {
+        std::string command = "ping ";
+        command += target;  // Append the target (IP or hostname) to the ping command
+        system(command.c_str());  // Execute the ping command
+    } else {
+        std::cout << "Error: No target specified for ping.\n";
+    }
+    return 0;
+}
+
+void create_and_wait_thread(LPTHREAD_START_ROUTINE commandFunc, LPVOID param = nullptr) {
     // Create a child thread to execute the command
     HANDLE hThread = CreateThread(
         NULL,           // default security attributes
         0,              // default stack size
         commandFunc,    // start address of the thread function
-        (LPVOID)param,           // parameter to pass to the thread
+        param,          // parameter to pass to the thread
         0,              // default creation flags
         NULL);          // thread ID not required
 
@@ -126,7 +193,6 @@ void create_and_wait_thread(LPTHREAD_START_ROUTINE commandFunc, const char* para
     // Close the thread handle
     CloseHandle(hThread);
 }
-
 int main() {
     std::string input;
 
@@ -141,18 +207,45 @@ int main() {
 
         if (command == "echo") {
             std::string message;
-            getline(iss, message);
+            getline(iss, message);  // Get the rest of the input as the message
+
+            // Remove leading space
             if (!message.empty() && message[0] == ' ') {
                 message = message.substr(1);
             }
-            std::cout << message << std::endl;
+
+            char* echoMessage = new char[message.length() + 1];  // Create char array for the message
+            strcpy(echoMessage, message.c_str());  // Copy the message into the char array
+
+            create_and_wait_thread(execute_echo, (LPVOID)echoMessage);  // Call the echo function
+            delete[] echoMessage;  // Clean up the allocated memory
         }
-        else if (input.find("color(") == 0 && input[input.size() - 1] == ')') {
-            std::string color = input.substr(6, input.size() - 7);
-            if (color == "red" || color == "green" || color == "blue" || color == "default") {
-                setColor(color);
+        else if (command == "color") {
+            std::string attr;
+            iss >> attr;
+
+            if (attr.empty()) {
+                // If no attribute is given, print the help message
+                printColorHelp();
             } else {
-                std::cout << "Unsupported color! Use 'red', 'green', 'blue', or 'default'.\n";
+                // Pass the color attribute to the setColor thread
+                std::string* attrPtr = new std::string(attr);
+                create_and_wait_thread(setColor, attrPtr);
+                delete attrPtr;  // Free the memory after the thread finishes
+            }
+        }
+        else if (command == "ping") {
+            std::string target;
+            iss >> target;  // Get the target (hostname or IP address)
+
+            if (!target.empty()) {
+                char* targetCStr = new char[target.length() + 1];  // Create char array for the target
+                strcpy(targetCStr, target.c_str());  // Copy the target into the char array
+
+                create_and_wait_thread(execute_ping, (LPVOID)targetCStr);  // Run ping in a thread
+                delete[] targetCStr;  // Clean up allocated memory
+            } else {
+                std::cout << "Error: Please specify a target (hostname or IP address).\n";
             }
         }
         else if (input == "dir") {
@@ -165,9 +258,9 @@ int main() {
             create_and_wait_thread(execute_path);
         } else if (input == "tasklist"){
             create_and_wait_thread(execute_tasklist);
-        }else if(input.rfind("notepad", 0) == 0){
+        }else if (input.rfind("notepad", 0) == 0) {
             std::string fileName = input.length() > 7 ? input.substr(8) : "";
-            create_and_wait_thread(execute_notepad, fileName.c_str());
+            create_and_wait_thread(execute_notepad, (LPVOID)fileName.c_str());  // Cast to LPVOID to fix problem
         }else if (input == "exit" || input == "quit") {
             std::cout << "Exiting myShell...\n";
             break;
