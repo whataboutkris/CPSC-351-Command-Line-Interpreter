@@ -81,8 +81,7 @@ DWORD WINAPI execute_notepad(LPVOID lpParam){
         std::string command = "notepad ";
         command += fileName;
         system(command.c_str());
-    }
-    else{
+    } else{
         system("notepad");
     }
     return 0;
@@ -90,10 +89,11 @@ DWORD WINAPI execute_notepad(LPVOID lpParam){
 
 DWORD WINAPI execute_echo(LPVOID lpParam) {
     char* message = static_cast<char*>(lpParam);  // Cast LPVOID to char*
-    if (message != nullptr) {
+    
+    if (message != nullptr && message[0] != '\0') {
         std::cout << message << std::endl;  // Print the message
     } else {
-        std::cout << "Error: No message to echo.\n";
+        std::cout << std::endl;  // Print a blank line for empty input
     }
     return 0;
 }
@@ -205,19 +205,38 @@ int main() {
         std::string command;
         iss >> command;
 
+        int echoStatus = 1;
+
         if (command == "echo") {
             std::string message;
-            getline(iss, message);  // Get the rest of the input as the message
+            std::getline(iss, message);  // Get the rest of the input as the message
 
-            // Remove leading space
+            // Remove leading spaces
             if (!message.empty() && message[0] == ' ') {
                 message = message.substr(1);
             }
 
-            char* echoMessage = new char[message.length() + 1];  // Create char array for the message
-            strcpy(echoMessage, message.c_str());  // Copy the message into the char array
+            if (message == "off") {
+                std::cout << "ECHO is off" << std::endl; // Handle echo off case
+            }
+            else if (message == "on") {
+                std::cout << "ECHO is on" << std::endl;
+            }
+            else {
+                // Prepare the message to pass to the thread
+                char* echoMessage = new char[message.length() + 1];  // Create char array for the message
+                strcpy(echoMessage, message.c_str());  // Copy the message into the char array
 
-            create_and_wait_thread(execute_echo, (LPVOID)echoMessage);  // Call the echo function
+                // Call the echo function
+                create_and_wait_thread(execute_echo, (LPVOID)echoMessage);  
+                delete[] echoMessage;  // Clean up the allocated memory
+            }
+        }
+        else if (command == "echo.") {
+            // Handle echo. separately to print a blank line
+            char* echoMessage = new char[1];  // Create an empty char array
+            echoMessage[0] = '\0';  // Null-terminate the string
+            create_and_wait_thread(execute_echo, (LPVOID)echoMessage);  
             delete[] echoMessage;  // Clean up the allocated memory
         }
         else if (command == "color") {
