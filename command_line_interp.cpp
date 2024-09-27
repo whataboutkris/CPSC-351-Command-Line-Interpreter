@@ -130,7 +130,7 @@ DWORD WINAPI execute_ping(LPVOID lpParam) {  //Verifies IP-level connectivity to
         command += target;  // Append the target (IP or hostname) to the ping command
         system(command.c_str());  // Execute the ping command
     } else {
-        std::cout << "Error: No target specified for ping.\n";
+        std::cout << "Error: No target specified for ping. Do: 'ping <ipaddresshere>\n";
     }
     return 0;
 }
