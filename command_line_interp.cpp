@@ -119,44 +119,11 @@ void printColorHelp() {
     std::cout << "window, the /T command line switch, or from the DefaultColor registry value.\n";
 }
 DWORD WINAPI setColor(LPVOID lpParam) {
-    std::string attr = *static_cast<std::string*>(lpParam);  // Cast LPVOID to string*
-
-    // Get the current console text attributes
-    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &consoleInfo);
-    int currentAttr = consoleInfo.wAttributes;
-    
-    int currentBg = (currentAttr >> 4) & 0x0F;  // Extract current background color
-    int currentFg = currentAttr & 0x0F;         // Extract current foreground color
-
-    if (attr.empty()) {
-        printColorHelp();
-        return 0;
-    }
-
-    // Check if one or two hex digits are provided
-    if (attr.size() == 1) {
-        // Only background provided, keep the current foreground
-        int bgValue = strtol(attr.c_str(), NULL, 16);
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (bgValue << 4) | currentFg);
-    } 
-    else if (attr.size() == 2) {
-        // Both background and foreground provided
-        char background = attr[0];
-        char foreground = attr[1];
-
-        if (background == foreground) {
-            std::cout << "Error: Foreground and background colors cannot be the same.\n";
-            return 1;
-        }
-
-        int bgValue = strtol(&background, NULL, 16);
-        int fgValue = strtol(&foreground, NULL, 16);
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (bgValue << 4) | fgValue);
-    } else {
-        std::cout << "Invalid attribute format! Use one or two hex digits like '1' or 'fc'.\n";
-    }
-    
+    std::string* attrPtr = static_cast<std::string*>(lpParam);
+    // Convert hex string to integer
+    int colorAttr = std::stoi(*attrPtr, nullptr, 16);
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, colorAttr);
     return 0;
 }
 
